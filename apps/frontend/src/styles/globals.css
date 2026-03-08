@@ -1,0 +1,152 @@
+/* ─── Reset & Root ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --am:  #E8883A;
+  --amd: #C4622D;
+  --gr:  #1A4332;
+  --grm: #2D6A4F;
+  --cr:  #FDF6E3;
+  --crd: #F0E6C8;
+  --gd:  #F4C430;
+  --rd:  #C1121F;
+  --tx:  #1C1208;
+  --mu:  #7C6B55;
+  --wh:  #FFFFFF;
+  --sh:  0 4px 24px rgba(28,18,8,0.12);
+  --shl: 0 8px 40px rgba(28,18,8,0.18);
+  --tb:  #0D1117;
+  --tg:  #39D353;
+
+  font-family: 'DM Sans', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { background: var(--cr); color: var(--tx); }
+button { cursor: pointer; font-family: 'DM Sans', sans-serif; }
+input, select, textarea { font-family: 'DM Sans', sans-serif; }
+
+/* ─── Scrollbars ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--crd); }
+::-webkit-scrollbar-thumb { background: var(--am); border-radius: 3px; }
+
+.ts::-webkit-scrollbar { width: 4px; }
+.ts::-webkit-scrollbar-track { background: #1a1f2e; }
+.ts::-webkit-scrollbar-thumb { background: var(--tg); border-radius: 2px; }
+
+/* ─── Animations ───────────────────────────────────────────────── */
+@keyframes fadeUp  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+@keyframes spin    { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+
+.fade-up { animation: fadeUp .35s ease both; }
+
+/* ─── Kente stripe bar ─────────────────────────────────────────── */
+.kente {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--am) 0, var(--am) 8px,
+    var(--gd) 8px, var(--gd) 16px,
+    var(--gr) 16px, var(--gr) 24px,
+    var(--gd) 24px, var(--gd) 32px,
+    var(--rd) 32px, var(--rd) 40px,
+    var(--gd) 40px, var(--gd) 48px
+  );
+  height: 6px;
+}
+
+/* ─── Nav item ─────────────────────────────────────────────────── */
+.ni:hover { background: rgba(255,255,255,0.12); }
+.ni.act   { background: rgba(255,255,255,0.18); border-right: 3px solid var(--gd); }
+
+/* ─── Badges ───────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5px;
+}
+.bg { background: #D1FAE5; color: #065F46; }
+.br { background: #FEE2E2; color: #991B1B; }
+.ba { background: #FEF3C7; color: #92400E; }
+.bb { background: #DBEAFE; color: #1E40AF; }
+
+/* ─── Table ────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
+th {
+  background: var(--crd);
+  color: #6B3A2A;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+}
+td { padding: 12px 14px; border-bottom: 1px solid var(--crd); font-size: 14px; }
+tr:hover td { background: rgba(232,136,58,0.04); }
+
+/* ─── Form inputs ──────────────────────────────────────────────── */
+input[type=text],
+input[type=number],
+input[type=date],
+select,
+textarea {
+  border: 1.5px solid var(--crd);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  width: 100%;
+  background: var(--wh);
+  color: var(--tx);
+  outline: none;
+  transition: border .2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--am); }
+
+/* ─── Buttons ──────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  transition: all .15s;
+}
+.bp  { background: var(--am);  color: white; }
+.bp:hover  { background: var(--amd); transform: translateY(-1px); }
+.bg2 { background: var(--grm); color: white; }
+.bg2:hover { background: var(--gr); }
+.bgh { background: transparent; color: var(--am); border: 1.5px solid var(--am); }
+.bgh:hover { background: var(--am); color: white; }
+.bs  { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+
+/* ─── Modal ────────────────────────────────────────────────────── */
+.mo {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  animation: fadeUp .2s ease;
+}
+.mc {
+  background: var(--wh);
+  border-radius: 16px;
+  padding: 28px;
+  width: 480px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shl);
+}
+
+/* ─── Card hover ───────────────────────────────────────────────── */
+.sc:hover { transform: translateY(-3px); transition: all .2s; }
