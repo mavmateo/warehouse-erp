@@ -1,4 +1,4 @@
-type Page = "dashboard" | "pos" | "inventory" | "expenses" | "suppliers" | "reports" | "query";
+type Page = "dashboard" | "pos" | "inventory" | "expenses" | "suppliers" | "reports" | "query" |"scanner";
 
 interface SidebarProps {
   page:     Page;
@@ -11,9 +11,11 @@ const NAV: { id: Page; label: string; icon: string; badge?: string }[] = [
   { id: "pos",       label: "Make a Sale", icon: "🛒" },
   { id: "inventory", label: "Inventory",   icon: "📦" },
   { id: "expenses",  label: "Expenses",    icon: "💸" },
+  { id: "customers", label: "Customers",   icon: "👥" },
   { id: "suppliers", label: "Suppliers",   icon: "🤝" },
   { id: "reports",   label: "Reports",     icon: "📊" },
   { id: "query",     label: "Query Data",  icon: "🔍", badge: "AI" },
+  { id: "scanner", label: "Sales Scanner", icon: "📋" }
 ];
 
 export function Sidebar({ page, setPage, lowStock }: SidebarProps) {

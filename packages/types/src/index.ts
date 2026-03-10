@@ -84,6 +84,7 @@ export interface Expense {
   amount:       number;
   category:     ExpenseCategory;
   created_at:   ISOTimestamp | null;
+  supplier_id?: number | null ;
 }
 
 export type ExpenseInsert = Omit<Expense, "id" | "created_at">;

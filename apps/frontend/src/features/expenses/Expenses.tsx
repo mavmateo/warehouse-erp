@@ -14,7 +14,7 @@ export function Expenses({ onRefresh }: { onRefresh: () => void }) {
   const [form,   setForm]   = useState({ expense_date: today(), description: "", amount: "", category: "Rent" as ExpenseCategory });
   const [saving, setSaving] = useState(false);
 
-  const load = () => dbGet<Expense[]>("/expenses?order=expense_date.desc").then(setExpenses);
+  const load = () => dbGet<Expense[]>("/expenses?select=*&order=expense_date.desc").then(setExpenses);
   useEffect(() => { void load(); }, []);
 
   const total = expenses.reduce((a, e) => a + +e.amount, 0);
@@ -47,18 +47,28 @@ export function Expenses({ onRefresh }: { onRefresh: () => void }) {
           <table>
             <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
             <tbody>
-              {expenses.map((e) => (
-                <tr key={e.id}>
-                  <td style={{ color:"var(--mu)",fontSize:13 }}>{e.expense_date}</td>
-                  <td style={{ fontWeight:500 }}>{e.description}</td>
-                  <td><span className="badge ba">{e.category}</span></td>
-                  <td style={{ fontFamily:"Space Mono",fontWeight:700,color:"var(--rd)" }}>{fmt(e.amount)}</td>
-                  <td>
-                    <button className="btn bs" style={{ background:"#FEE2E2",color:"var(--rd)",border:"none" }}
-                      onClick={async () => { await dbDelete(`/expenses?id=eq.${e.id}`); load(); onRefresh(); }}>×</button>
-                  </td>
-                </tr>
-              ))}
+              {expenses.map(e => (
+  <tr key={e.id}>
+    <td style={{ color:"var(--mu)",fontSize:13 }}>{e.expense_date}</td>
+    <td style={{ fontWeight:500 }}>
+      {e.description}
+      {e.supplier_id && (
+        <span style={{ marginLeft:8, fontSize:10, background:"#EEF2FF", color:"#4338CA", padding:"2px 7px", borderRadius:10, fontWeight:600 }}>
+          🔗 supplier
+        </span>
+      )}
+    </td>
+    <td><span className="badge ba">{e.category}</span></td>
+    <td style={{ fontFamily:"Space Mono",fontWeight:700,color:"var(--rd)" }}>{fmt(e.amount)}</td>
+    <td>
+      {e.supplier_id
+        ? <span style={{ fontSize:11, color:"var(--mu)", fontStyle:"italic" }}>auto-managed</span>
+        : <button className="btn bs" style={{ background:"#FEE2E2",color:"var(--rd)",border:"none" }}
+            onClick={async()=>{await dbDelete(`/expenses?id=eq.${e.id}`);load();onRefresh();}}>×</button>
+      }
+    </td>
+  </tr>
+))}
             </tbody>
           </table>
         </div>

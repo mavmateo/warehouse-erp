@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<Page, string> = {
   pos:       "Point of Sale",
   inventory: "Inventory",
   expenses:  "Expenses",
+  customers: "Customers",
   suppliers: "Suppliers",
   reports:   "Reports",
   query:     "Query Shop Data",
