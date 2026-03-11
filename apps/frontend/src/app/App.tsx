@@ -7,6 +7,7 @@ import type { Page }      from "@/components/layout/Sidebar";
 
 import { Dashboard }      from "@/features/dashboard/Dashboard";
 import { POS }            from "@/features/sales/POS";
+import { Sales }          from "@/features/sales/Sales";
 import { Inventory }      from "@/features/inventory/Inventory";
 import { Expenses }       from "@/features/expenses/Expenses";
 import { Customers }      from "@/features/customers/Customers";
@@ -55,6 +56,7 @@ export function App() {
           {page === "dashboard" && <Dashboard key={tick} reload={tick} />}
           {page === "pos"       && <POS onRefresh={refresh} />}
           {page === "inventory" && <Inventory key={tick} onRefresh={refresh} />}
+          {page === "sales"     && <Sales onGoToPOS={() => setPage("pos")} />}
           {page === "expenses"  && <Expenses  key={tick} onRefresh={refresh} />}
           {page === "customers" && <Customers key={tick} onRefresh={refresh} />}
           {page === "suppliers" && <Suppliers key={tick} onRefresh={refresh} />}

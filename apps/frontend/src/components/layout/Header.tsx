@@ -10,6 +10,7 @@ const PAGE_TITLES: Record<Page, string> = {
   dashboard: "Dashboard",
   pos:       "Point of Sale",
   inventory: "Inventory",
+  sales:     "Sales",
   expenses:  "Expenses",
   customers: "Customers",
   suppliers: "Suppliers",
