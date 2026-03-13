@@ -1,3 +1,6 @@
 2026/03/13-14:12:51.734 40155 Reusing MANIFEST /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
 2026/03/13-14:12:51.757 40155 Recovering log #3
 2026/03/13-14:12:51.759 40155 Reusing old log /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/Local Storage/leveldb/000003.log 
+2026/03/13-14:41:53.835 40152 Level-0 table #5: started
+2026/03/13-14:41:53.840 40152 Level-0 table #5: 17090 bytes OK
+2026/03/13-14:41:53.844 40152 Delete type=0 #3

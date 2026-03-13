@@ -5,6 +5,26 @@ import { dbGet, dbPost, dbPatch } from "@/lib/api";
 import { today, fmt } from "@/lib/utils";
 import type { Product, PaymentMethod } from "@erp/types";
 
+const WA_URL = (import.meta.env.VITE_WHATSAPP_SERVER_URL as string) || "http://localhost:3001";
+
+/** Fire-and-forget WhatsApp thank-you. Never throws — sale must never fail because of this. */
+async function sendThankYou(name: string, phone: string, total: number) {
+  const message =
+    `Hi ${name}! 🙏 Thank you for shopping at BaleShop GH.\n` +
+    `Your purchase of ${new Intl.NumberFormat("en-GH", { style:"currency", currency:"GHS" }).format(total)} has been recorded.\n` +
+    `We look forward to seeing you again! — BaleShop GH 🧺`;
+  try {
+    await fetch(`${WA_URL}/send`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ recipients: [{ name, phone }], message }),
+      signal:  AbortSignal.timeout(10000),
+    });
+  } catch {
+    // Silently ignore — WhatsApp server may be offline; sale is already saved
+  }
+}
+
 interface CartItem { pid: number; name: string; price: number; qty: number; max: number; }
 
 interface Customer { id: number; name: string; phone: string | null; location: string | null; }
@@ -140,6 +160,17 @@ export function POS({ onRefresh }: { onRefresh: () => void }) {
         const p = products.find((x) => x.id === item.pid);
         return p ? dbPatch(`/products?id=eq.${item.pid}`, { stock: p.stock - item.qty }) : Promise.resolve();
       }));
+
+      // ── WhatsApp thank-you (fire-and-forget) ──────────────────────
+      // Resolve the linked customer's phone — covers all three link states
+      const linkedPhone = (
+        linkedCust?.phone ??
+        customers.find((c) => c.name.toLowerCase() === trimmedName.toLowerCase())?.phone ??
+        null
+      );
+      if (customerId && linkedPhone) {
+        void sendThankYou(trimmedName, linkedPhone, total);
+      }
 
       onRefresh();
       setSaleTotal(total);
