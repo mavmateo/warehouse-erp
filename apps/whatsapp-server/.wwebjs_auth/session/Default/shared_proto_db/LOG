@@ -1,2 +1,3 @@
-2026/03/13-11:14:37.391 2ea5a Creating DB /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db since it was missing.
-2026/03/13-11:14:37.395 2ea5a Reusing MANIFEST /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001
+2026/03/13-14:12:53.167 40151 Reusing MANIFEST /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001
+2026/03/13-14:12:53.167 40151 Recovering log #3
+2026/03/13-14:12:53.168 40151 Reusing old log /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db/000003.log 

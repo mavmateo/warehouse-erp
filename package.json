@@ -4,29 +4,27 @@
   "private": true,
   "description": "BaleShop GH – Multi-module ERP SaaS platform",
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
-    "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean && rm -rf node_modules",
-    "db:generate": "pnpm --filter @erp/db run generate",
-    "db:migrate": "pnpm --filter @erp/db run migrate",
-    "db:seed": "pnpm --filter @erp/db run seed"
+    "start":        "node start.js",
+    "dev":          "turbo run dev",
+    "build":        "turbo run build",
+    "test":         "turbo run test",
+    "lint":         "turbo run lint",
+    "format":       "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "typecheck":    "turbo run typecheck",
+    "clean":        "turbo run clean && rm -rf node_modules",
+    "db:generate":  "pnpm --filter @erp/db run generate",
+    "db:migrate":   "pnpm --filter @erp/db run migrate",
+    "db:seed":      "pnpm --filter @erp/db run seed"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "prettier": "^3.4.0",
-    "turbo": "^2.3.0",
-    "typescript": "^5.7.0"
+    "turbo":              "^2.3.0",
+    "prettier":           "^3.4.0",
+    "typescript":         "^5.7.0",
+    "@types/node":        "^22.0.0"
   },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.15.0",
-  "dependencies": {
-    "tesseract.js": "^7.0.0"
-  }
+  "packageManager": "pnpm@9.15.0"
 }

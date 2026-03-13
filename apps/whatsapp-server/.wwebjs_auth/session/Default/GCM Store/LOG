@@ -1,2 +1,3 @@
-2026/03/13-11:14:48.881 2ea58 Creating DB /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/GCM Store since it was missing.
-2026/03/13-11:14:48.902 2ea58 Reusing MANIFEST /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/GCM Store/MANIFEST-000001
+2026/03/13-14:12:57.459 40154 Reusing MANIFEST /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/GCM Store/MANIFEST-000001
+2026/03/13-14:12:57.460 40154 Recovering log #3
+2026/03/13-14:12:57.460 40154 Reusing old log /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/GCM Store/000003.log 
