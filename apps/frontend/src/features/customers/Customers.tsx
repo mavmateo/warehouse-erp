@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Field } from "@/components/ui/Field";
 import { Spin }  from "@/components/ui/Spin";
 import { dbGet, dbPost, dbPatch, dbDelete } from "@/lib/api";
 import { fmt } from "@/lib/utils";
 
-const SB_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const WA_URL = (import.meta.env.VITE_WHATSAPP_SERVER_URL as string) || "http://localhost:3001";
 
 interface Customer {
   id: number; name: string; phone: string | null;
@@ -22,13 +21,20 @@ interface CustomerRow extends Customer {
   topItem: string | null; lastSaleDate: string | null; payMethods: string[];
 }
 interface SendResult {
-  recipient: string; phone: string; channel: string;
-  success: boolean; sid?: string; error?: string;
+  recipient: string; phone: string; success: boolean; error?: string;
+}
+
+type WaStatus = "initialising" | "qr" | "ready" | "disconnected" | "auth_failure" | "unreachable";
+
+interface WaStatusResponse {
+  status:  WaStatus;
+  ready:   boolean;
+  qr:      string | null;
+  message: string;
 }
 
 type FormState = Partial<Customer>;
-type Channel   = "sms" | "whatsapp" | "both";
-type ModalType = "add" | "edit" | "view" | "message" | null;
+type ModalType = "add" | "edit" | "view" | "message" | "qr" | null;
 
 const TEMPLATES = [
   { label: "New Stock Arrival",
@@ -50,8 +56,32 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
   const [search,  setSearch]  = useState("");
   const [saving,  setSaving]  = useState(false);
 
+  // ── WhatsApp status ───────────────────────────────────────────────────────
+  const [waStatus,  setWaStatus]  = useState<WaStatusResponse | null>(null);
+  const [waLoading, setWaLoading] = useState(true);
+
+  const pollWaStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${WA_URL}/status`, { signal: AbortSignal.timeout(4000) });
+      const data: WaStatusResponse = await res.json();
+      setWaStatus(data);
+      // If QR modal is open and we just became ready, close it
+      if (data.ready) setModal((m) => m === "qr" ? null : m);
+    } catch {
+      setWaStatus({ status: "unreachable", ready: false, qr: null, message: "WhatsApp server not running. Start it with: cd apps/whatsapp-server && npm start" });
+    } finally {
+      setWaLoading(false);
+    }
+  }, []);
+
+  // Poll every 4 seconds while QR is showing, every 20s otherwise
+  useEffect(() => {
+    pollWaStatus();
+    const interval = setInterval(pollWaStatus, waStatus?.status === "qr" ? 4000 : 20000);
+    return () => clearInterval(interval);
+  }, [pollWaStatus, waStatus?.status]);
+
   // ── Messaging state ───────────────────────────────────────────────────────
-  const [msgChannel,  setMsgChannel]  = useState<Channel>("sms");
   const [tplIdx,      setTplIdx]      = useState(0);
   const [msgBody,     setMsgBody]     = useState(TEMPLATES[0].body);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -113,13 +143,33 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
   const openView = (r: CustomerRow) => { setViewing(r); setModal("view"); };
   const payBadgeClass = (m: string) => m === "Cash" ? "bg" : m === "MoMo" ? "ba" : "bb";
 
+  // ── WhatsApp status helpers ───────────────────────────────────────────────
+  const waStatusColor = {
+    ready:        "#16a34a",
+    qr:           "#d97706",
+    initialising: "#6b7280",
+    disconnected: "#dc2626",
+    auth_failure: "#dc2626",
+    unreachable:  "#dc2626",
+  }[waStatus?.status ?? "unreachable"];
+
+  const waStatusIcon = {
+    ready:        "🟢",
+    qr:           "📱",
+    initialising: "⏳",
+    disconnected: "🔴",
+    auth_failure: "❌",
+    unreachable:  "⚠️",
+  }[waStatus?.status ?? "unreachable"];
+
   // ── Messaging helpers ─────────────────────────────────────────────────────
   const withPhone = rows.filter((r) => r.phone);
 
   const openMessage = () => {
+    if (!waStatus?.ready) { setModal("qr"); return; }
     setSelectedIds(new Set(withPhone.map((r) => r.id)));
     setSendResults(null); setTplIdx(0);
-    setMsgBody(TEMPLATES[0].body); setMsgChannel("sms");
+    setMsgBody(TEMPLATES[0].body);
     setModal("message");
   };
 
@@ -149,20 +199,19 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
 
     for (const r of targets) {
       try {
-        const res = await fetch(`${SB_URL}/functions/v1/send-message`, {
+        const res = await fetch(`${WA_URL}/send`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             recipients: [{ name: r.name, phone: r.phone }],
             message: personalise(msgBody, r.name),
-            channel: msgChannel,
           }),
         });
         const data = await res.json();
-        if (data.error) results.push({ recipient: r.name, phone: r.phone!, channel: msgChannel, success: false, error: data.error });
+        if (data.error) results.push({ recipient: r.name, phone: r.phone!, success: false, error: data.error });
         else results.push(...(data.results as SendResult[]));
       } catch (e) {
-        results.push({ recipient: r.name, phone: r.phone!, channel: msgChannel, success: false, error: (e as Error).message });
+        results.push({ recipient: r.name, phone: r.phone!, success: false, error: (e as Error).message });
       }
     }
     setSendResults(results); setSending(false);
@@ -176,16 +225,41 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
     <div className="fade-up">
 
       {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
         <div>
           <h2 style={{ fontFamily:"Playfair Display", fontSize:26, color:"var(--gr)" }}>Customers</h2>
           <p style={{ color:"var(--mu)", fontSize:13 }}>{rows.length} customers · {withPhone.length} with phone numbers</p>
         </div>
         <div style={{ display:"flex", gap:10 }}>
-          <button className="btn bg2" onClick={openMessage} disabled={withPhone.length === 0}>📣 Send Message</button>
+          <button className="btn bg2" onClick={openMessage} disabled={withPhone.length === 0 || waLoading}>
+            🟢 Send WhatsApp
+          </button>
           <button className="btn bp" onClick={openAdd}>+ Add Customer</button>
         </div>
       </div>
+
+      {/* WhatsApp status banner */}
+      {!waLoading && (
+        <div onClick={() => setModal("qr")}
+          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:10, marginBottom:16, cursor:"pointer", transition:"opacity .15s",
+            background: waStatus?.ready ? "#F0FDF4" : "#FFF7ED",
+            border: `1.5px solid ${waStatus?.ready ? "#86efac" : "#fed7aa"}`,
+          }}>
+          <span style={{ fontSize:16 }}>{waStatusIcon}</span>
+          <div style={{ flex:1 }}>
+            <span style={{ fontSize:13, fontWeight:600, color: waStatusColor }}>WhatsApp: {waStatus?.status ?? "unreachable"}</span>
+            <span style={{ fontSize:12, color:"var(--mu)", marginLeft:8 }}>{waStatus?.message}</span>
+          </div>
+          {!waStatus?.ready && (
+            <span style={{ fontSize:12, color:"var(--am)", fontWeight:600 }}>
+              {waStatus?.status === "qr" ? "📱 Tap to scan QR →" : "Tap for details →"}
+            </span>
+          )}
+          {waStatus?.ready && (
+            <span style={{ fontSize:12, color:"#16a34a", fontWeight:600 }}>Tap to manage →</span>
+          )}
+        </div>
+      )}
 
       {/* Search */}
       <div style={{ marginBottom:16 }}>
@@ -277,7 +351,7 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
       {(modal === "add" || modal === "edit") && (
         <Modal title={modal === "add" ? "Add Customer" : "Edit Customer"} onClose={() => setModal(null)}>
           <Field label="Full Name"><input type="text" value={form.name??""} onChange={(e)=>setForm({...form,name:e.target.value})} placeholder="e.g. Abena Mensah"/></Field>
-          <Field label="Phone Number"><input type="text" value={form.phone??""} onChange={(e)=>setForm({...form,phone:e.target.value})} placeholder="e.g. +233244123456"/></Field>
+          <Field label="Phone Number"><input type="text" value={form.phone??""} onChange={(e)=>setForm({...form,phone:e.target.value})} placeholder="e.g. 0244123456 or +233244123456"/></Field>
           <Field label="Location / Area"><input type="text" value={form.location??""} onChange={(e)=>setForm({...form,location:e.target.value})} placeholder="e.g. Accra, Kumasi…"/></Field>
           <Field label="Notes (optional)"><textarea rows={2} value={form.notes??""} onChange={(e)=>setForm({...form,notes:e.target.value})} placeholder="e.g. Regular buyer, prefers Children bales" style={{resize:"vertical"}}/></Field>
           <div style={{ display:"flex", gap:10, marginTop:20 }}>
@@ -329,16 +403,72 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
         </Modal>
       )}
 
-      {/* ── Send Message modal ── */}
+      {/* ── WhatsApp QR / Status modal ── */}
+      {modal === "qr" && (
+        <Modal title="WhatsApp Connection" onClose={() => setModal(null)}>
+          <div style={{ textAlign:"center" }}>
+            {waStatus?.status === "ready" ? (
+              <>
+                <div style={{ fontSize:52, marginBottom:12 }}>🟢</div>
+                <div style={{ fontFamily:"Playfair Display", fontSize:20, color:"var(--gr)", marginBottom:6 }}>Connected!</div>
+                <div style={{ fontSize:13, color:"var(--mu)", marginBottom:24 }}>WhatsApp is linked and ready to send messages.</div>
+                <button className="btn bgh" style={{ width:"100%", justifyContent:"center" }} onClick={async () => {
+                  await fetch(`${WA_URL}/disconnect`, { method:"POST" });
+                  await pollWaStatus();
+                }}>Disconnect / Change Account</button>
+              </>
+            ) : waStatus?.status === "qr" && waStatus.qr ? (
+              <>
+                <div style={{ fontSize:13, color:"var(--mu)", marginBottom:16, lineHeight:1.7 }}>
+                  Open <strong>WhatsApp</strong> on your phone → tap <strong>⋮ Menu → Linked Devices → Link a Device</strong> and scan this code:
+                </div>
+                <div style={{ display:"inline-block", padding:12, background:"white", borderRadius:12, border:"2px solid var(--crd)", marginBottom:16 }}>
+                  <img src={waStatus.qr} alt="WhatsApp QR Code" style={{ width:240, height:240, display:"block" }}/>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, justifyContent:"center", marginBottom:8 }}>
+                  <div style={{ width:8, height:8, borderRadius:"50%", background:"var(--am)", animation:"pulse 1.5s ease-in-out infinite" }}/>
+                  <span style={{ fontSize:12, color:"var(--mu)" }}>Waiting for scan… refreshes automatically</span>
+                </div>
+              </>
+            ) : waStatus?.status === "initialising" ? (
+              <>
+                <div style={{ fontSize:48, marginBottom:12 }}>⏳</div>
+                <div style={{ fontSize:15, color:"var(--mu)" }}>WhatsApp is starting up…</div>
+                <div style={{ fontSize:13, color:"var(--mu)", marginTop:6 }}>This usually takes 10–20 seconds on first run.</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:48, marginBottom:12 }}>⚠️</div>
+                <div style={{ fontFamily:"Playfair Display", fontSize:18, color:"var(--gr)", marginBottom:8 }}>Server not running</div>
+                <div style={{ fontSize:13, color:"var(--mu)", marginBottom:16, lineHeight:1.8 }}>
+                  Start the WhatsApp server in a new terminal:
+                </div>
+                <div style={{ background:"#1A1A1A", color:"#86EFAC", borderRadius:10, padding:"14px 18px", fontFamily:"Space Mono", fontSize:12, textAlign:"left", marginBottom:16, lineHeight:2 }}>
+                  <div>cd apps/whatsapp-server</div>
+                  <div>npm install</div>
+                  <div>npm start</div>
+                </div>
+                <div style={{ fontSize:12, color:"var(--mu)" }}>This page will connect automatically once the server is running.</div>
+              </>
+            )}
+          </div>
+          <div style={{ marginTop:20 }}>
+            <button className="btn bgh" style={{ width:"100%", justifyContent:"center" }} onClick={() => setModal(null)}>Close</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Send WhatsApp Message modal ── */}
       {modal === "message" && (
-        <div className="mo" onClick={(e)=>{ if(e.target===e.currentTarget) setModal(null); }}>
-          <div style={{ background:"var(--wh)", borderRadius:16, width:820, maxWidth:"96vw", maxHeight:"92vh", overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 12px 48px rgba(0,0,0,0.22)" }}>
+        <div className="mo" onClick={(e)=>{ if(e.target===e.currentTarget) setModal(null); }}
+          style={{ alignItems:"flex-start", paddingTop:70, overflowY:"auto" }}>
+          <div style={{ background:"var(--wh)", borderRadius:16, width:820, maxWidth:"96vw", maxHeight:"calc(100vh - 90px)", overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 12px 48px rgba(0,0,0,0.22)" }}>
 
             {/* Header */}
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 24px", borderBottom:"1px solid var(--crd)" }}>
               <div>
-                <h3 style={{ fontFamily:"Playfair Display", fontSize:22, color:"var(--gr)" }}>📣 Send Marketing Message</h3>
-                <p style={{ fontSize:13, color:"var(--mu)", marginTop:2 }}>Send personalised SMS and/or WhatsApp messages via Twilio</p>
+                <h3 style={{ fontFamily:"Playfair Display", fontSize:22, color:"var(--gr)" }}>🟢 Send WhatsApp Message</h3>
+                <p style={{ fontSize:13, color:"var(--mu)", marginTop:2 }}>Send personalised WhatsApp messages to your customers</p>
               </div>
               <button onClick={()=>setModal(null)} className="btn bgh bs">×</button>
             </div>
@@ -348,23 +478,6 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
 
               {/* LEFT — compose */}
               <div style={{ padding:"20px 24px", borderRight:"1px solid var(--crd)", overflowY:"auto", display:"flex", flexDirection:"column", gap:18 }}>
-
-                {/* Channel selector */}
-                <div>
-                  <label style={{ display:"block", fontSize:11, fontWeight:600, color:"var(--mu)", textTransform:"uppercase", letterSpacing:".5px", marginBottom:8 }}>Channel</label>
-                  <div style={{ display:"flex", gap:8 }}>
-                    {([["sms","💬 SMS"],["whatsapp","🟢 WhatsApp"],["both","📲 Both"]] as [Channel,string][]).map(([ch,label])=>(
-                      <button key={ch} onClick={()=>setMsgChannel(ch)}
-                        style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1.5px solid", fontSize:13, fontWeight:600, cursor:"pointer", transition:"all .15s",
-                          borderColor: msgChannel===ch ? "var(--grm)" : "var(--crd)",
-                          background:  msgChannel===ch ? "var(--grm)" : "transparent",
-                          color:       msgChannel===ch ? "white"      : "var(--mu)",
-                        }}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Templates */}
                 <div>
@@ -396,14 +509,19 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
                   <div style={{ fontSize:11, color:"var(--mu)", marginTop:4, textAlign:"right" }}>{msgBody.length} chars</div>
                 </div>
 
-                {/* Live preview */}
+                {/* Live preview — WhatsApp bubble style */}
                 {msgBody.trim() && (
-                  <div style={{ background:"#E8F5E9", borderRadius:12, padding:"12px 16px", border:"1px solid #C8E6C9" }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:"#2E7D32", textTransform:"uppercase", letterSpacing:".5px", marginBottom:6 }}>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:600, color:"var(--mu)", textTransform:"uppercase", letterSpacing:".5px", marginBottom:8 }}>
                       Preview — {withPhone.find(r=>selectedIds.has(r.id))?.name ?? "Customer"}
                     </div>
-                    <div style={{ fontSize:13, lineHeight:1.7, color:"#1B5E20", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
-                      {personalise(msgBody, withPhone.find(r=>selectedIds.has(r.id))?.name ?? "Customer")}
+                    <div style={{ background:"#DCF8C6", borderRadius:"0 12px 12px 12px", padding:"10px 14px", display:"inline-block", maxWidth:"100%", boxShadow:"0 1px 2px rgba(0,0,0,.1)" }}>
+                      <div style={{ fontSize:13, lineHeight:1.7, color:"#111", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
+                        {personalise(msgBody, withPhone.find(r=>selectedIds.has(r.id))?.name ?? "Customer")}
+                      </div>
+                      <div style={{ fontSize:10, color:"#667781", textAlign:"right", marginTop:4 }}>
+                        {new Date().toLocaleTimeString("en-GH", { hour:"2-digit", minute:"2-digit" })} ✓✓
+                      </div>
                     </div>
                   </div>
                 )}
@@ -430,14 +548,12 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
                   return (
                     <div key={r.id} onClick={()=>toggleOne(r.id)}
                       style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, border:"1.5px solid", cursor:"pointer", transition:"all .15s",
-                        borderColor: sel ? "var(--grm)" : "var(--crd)",
-                        background:  sel ? "#F0FDF4"    : "transparent",
+                        borderColor: sel ? "#16a34a" : "var(--crd)",
+                        background:  sel ? "#F0FDF4" : "transparent",
                       }}>
-                      {/* Checkbox */}
-                      <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${sel?"var(--grm)":"var(--crd)"}`, background:sel?"var(--grm)":"white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
+                      <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${sel?"#16a34a":"var(--crd)"}`, background:sel?"#16a34a":"white", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
                         {sel && <span style={{ fontSize:11, color:"white", lineHeight:1 }}>✓</span>}
                       </div>
-                      {/* Avatar */}
                       <div style={{ width:32, height:32, borderRadius:"50%", background:`hsl(${(r.name.charCodeAt(0)*47)%360},55%,62%)`, display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:700, fontSize:13, flexShrink:0 }}>
                         {r.name.charAt(0).toUpperCase()}
                       </div>
@@ -446,7 +562,7 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
                         <div style={{ fontSize:11, color:"var(--mu)" }}>📞 {r.phone}</div>
                       </div>
                       {r.totalSales > 0 && (
-                        <span style={{ fontSize:10, color:"var(--grm)", fontWeight:600, background:"#D1FAE5", padding:"2px 7px", borderRadius:10, flexShrink:0 }}>
+                        <span style={{ fontSize:10, color:"#16a34a", fontWeight:600, background:"#D1FAE5", padding:"2px 7px", borderRadius:10, flexShrink:0 }}>
                           {r.totalSales} sale{r.totalSales!==1?"s":""}
                         </span>
                       )}
@@ -471,12 +587,9 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
                       <div key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, padding:"4px 8px", borderRadius:6, background:r.success?"#D1FAE5":"#FEE2E2" }}>
                         <span>{r.success ? "✓" : "✗"}</span>
                         <span style={{ fontWeight:600 }}>{r.recipient}</span>
-                        <span style={{ color:"var(--mu)", fontSize:11 }}>({r.channel.toUpperCase()})</span>
+                        <span style={{ color:"var(--mu)", fontSize:11 }}>({r.phone})</span>
                         {!r.success && r.error && (
                           <span style={{ color:"var(--rd)", marginLeft:"auto", maxWidth:260, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.error}</span>
-                        )}
-                        {r.success && r.sid && (
-                          <span style={{ color:"#065F46", marginLeft:"auto", fontFamily:"monospace", fontSize:10, opacity:.7 }}>{r.sid}</span>
                         )}
                       </div>
                     ))}
@@ -488,14 +601,14 @@ export function Customers({ onRefresh }: { onRefresh: () => void }) {
                 <span style={{ fontSize:13, color:"var(--mu)" }}>
                   {selectedIds.size === 0
                     ? "Select at least one recipient"
-                    : `${selectedIds.size} recipient${selectedIds.size!==1?"s":""} · ${msgChannel === "both" ? "SMS + WhatsApp" : msgChannel.toUpperCase()}`}
+                    : `${selectedIds.size} recipient${selectedIds.size!==1?"s":""} via WhatsApp`}
                 </span>
                 <div style={{ display:"flex", gap:10 }}>
                   <button className="btn bgh" onClick={()=>setModal(null)}>Close</button>
                   <button className="btn bg2" onClick={sendMessages}
                     disabled={sending || selectedIds.size === 0 || !msgBody.trim()}
-                    style={{ minWidth:150, justifyContent:"center" }}>
-                    {sending ? <><Spin /> Sending…</> : `📤 Send to ${selectedIds.size}`}
+                    style={{ minWidth:160, justifyContent:"center", background:"#16a34a", borderColor:"#16a34a", color:"white" }}>
+                    {sending ? <><Spin /> Sending…</> : `🟢 Send to ${selectedIds.size}`}
                   </button>
                 </div>
               </div>
