@@ -1,3 +1,5 @@
 .env
 .env
 apps/frontend/.env
+apps/frontend/.env
+.env
