@@ -1,3 +1,3 @@
-2026/03/13-14:12:53.167 40151 Reusing MANIFEST /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001
-2026/03/13-14:12:53.167 40151 Recovering log #3
-2026/03/13-14:12:53.168 40151 Reusing old log /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db/000003.log 
+2026/03/16-16:38:34.016 59dad Reusing MANIFEST /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001
+2026/03/16-16:38:34.017 59dad Recovering log #3
+2026/03/16-16:38:34.020 59dad Reusing old log /Users/stormchaser/dev/warehouse/apps/whatsapp-server/.wwebjs_auth/session/Default/shared_proto_db/000003.log 

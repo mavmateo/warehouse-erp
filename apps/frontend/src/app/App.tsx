@@ -14,7 +14,7 @@ import { Customers }      from "@/features/customers/Customers";
 import { Suppliers }      from "@/features/suppliers/Suppliers";
 import { Reports }        from "@/features/reports/Reports";
 import { QueryPanel }     from "@/features/query/QueryPanel";
-import { SalesScanner }   from "@/features/scanner/SalesScanner";   // ← NEW
+import { Scanner }        from "@/features/scanner/Scanner";   // ← NEW
 
 import { dbGet } from "@/lib/api";
 import { useRefresh } from "@/hooks/useRefresh";
@@ -62,7 +62,7 @@ export function App() {
           {page === "suppliers" && <Suppliers key={tick} onRefresh={refresh} />}
           {page === "reports"   && <Reports   key={tick} reload={tick} />}
           {page === "query"     && <QueryPanel />}
-          {page === "scanner"   && <SalesScanner />}               {/* ← NEW */}
+          {page === "scanner"   && <Scanner />}               {/* ← NEW */}
         </div>
       </div>
     </div>

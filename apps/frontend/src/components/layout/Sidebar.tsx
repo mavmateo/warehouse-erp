@@ -16,7 +16,7 @@ const NAV: { id: Page; label: string; icon: string; badge?: string }[] = [
   { id: "suppliers", label: "Suppliers",   icon: "🤝" },
   { id: "reports",   label: "Reports",     icon: "📊" },
   { id: "query",     label: "Query Data",  icon: "🔍", badge: "AI" },
-  { id: "scanner", label: "Sales Scanner", icon: "📋" }
+  { id: "scanner", label: "Scanner", icon: "📋" }
 ];
 
 export function Sidebar({ page, setPage, lowStock }: SidebarProps) {
